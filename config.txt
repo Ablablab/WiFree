@@ -1,0 +1,3 @@
+essid=network_essid
+interface=ciao
+whitelist=mac1 mac2 mac3

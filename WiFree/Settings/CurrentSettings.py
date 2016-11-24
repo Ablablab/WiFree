@@ -1,23 +1,20 @@
-# default configuration file path
-DEFAULT_CONFIG_FILE="config.txt"
-# strings for settings
-CONFIG_ESSID='essid'
-CONFIG_INTERFACE='interface'
-CONFIG_WHITELIST='whitelist'
+from . import CONFIG_ESSID, CONFIG_INTERFACE, CONFIG_WHITELIST
 # class CurrentSettings
 # used to keep in memory current program settings
 class CurrentSettings:
     def __init__(self, settings):
         self.settings = {}
         self.error = False
-        # We are sure settings contain all needed data because we always call
-        # this after ConfigurationParser, but checking for robustness
-        if not CONFIG_ESSID in settings or                                     \
-                not CONFIG_INTERFACE in settings or                            \
-                not CONFIG_WHITELIST in settings:
-            self.error = True
-            return None
         self.settings = settings
+
+    def check_error(self):
+        if not CONFIG_ESSID in self.settings or \
+                not CONFIG_INTERFACE in self.settings or \
+                not CONFIG_WHITELIST in self.settings:
+            return True
+        else:
+            return False
+
 
     def getValue(self, what):
         if what in self.settings:

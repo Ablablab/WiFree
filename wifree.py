@@ -1,8 +1,8 @@
 import argparse
 import sys
 from WiFree.Settings.ConfigurationParser import ConfigurationParser
-from WiFree.Settings.CurrentSettings import CurrentSettings, \
-                                            DEFAULT_CONFIG_FILE
+from WiFree.Settings.CurrentSettings import CurrentSettings
+from WiFree.Settings import DEFAULT_CONFIG_FILE
 
 parser = argparse.ArgumentParser(prog='wifree', description='Free your wifi.')
 parser.add_argument('-e', '--essid', help='Network essid')
@@ -28,11 +28,6 @@ if __name__ == '__main__':
     fileConfiguration = configParser.getConfiguration()
     currentSettings = CurrentSettings(fileConfiguration)
 
-    if currentSettings.error:
-        print("ERROR in configuration file ("+configFilePath+")")
-        print("Make sure file syntax is correct and no field is missing")
-        exit(-1)
-
     # Update configuration if new data is available on argv
     if args.essid:
         currentSettings.setEssid(args.essid)
@@ -40,6 +35,11 @@ if __name__ == '__main__':
         currentSettings.setInterface(args.interface)
     if args.whitelist:
         currentSettings.setWhitelist(" ".join(args.whitelist.split(",")))
+
+    if currentSettings.check_error():
+        print("ERROR: some setting options are missing")
+        print("please check bot the config file and the command line")
+        exit(-1)
 
     print("Current settings: ")
     print("Essid: " + currentSettings.getEssid())

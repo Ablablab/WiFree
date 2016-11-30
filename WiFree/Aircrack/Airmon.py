@@ -38,6 +38,7 @@ class Airmon:
             iff = res.group(1)
             self._monitorInterface = iff[:-1]
         else:
+            self.error = "couldn't find monitor interface"
             return False
 
     def stop(self):

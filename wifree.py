@@ -50,3 +50,12 @@ if __name__ == '__main__':
     print("Essid: " + currentSettings.getEssid())
     print("Interface: " + currentSettings.getInterface())
     print("Whitelist: " + currentSettings.getWhitelist())
+
+    airmon = Airmon(currentSettings.getInterface())
+
+    if not airmon.start():
+        print("ERROR: " + airmon.error)
+        print("Aborting...")
+        exit(-1)
+    print("Activated monitor mode on interface " + airmon.getInterface())
+    print("Monitor interface is " + airmon.getMonitorInterface())

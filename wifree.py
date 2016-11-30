@@ -1,5 +1,6 @@
 import argparse
 import sys
+import os
 from WiFree.Settings.ConfigurationParser import ConfigurationParser
 from WiFree.Settings.CurrentSettings import CurrentSettings
 from WiFree.Settings import DEFAULT_CONFIG_FILE
@@ -12,6 +13,10 @@ parser.add_argument('-f', '--file', help='Configuration file')
 parser.add_argument('-w', '--whitelist', help='MAC whitelist, comma-separated')
 
 if __name__ == '__main__':
+    if os.geteuid() != 0:
+        print("ERROR: this program must be run as root")
+        exit(-1)
+
     args = parser.parse_args()
     configFilePath = DEFAULT_CONFIG_FILE
 

@@ -4,6 +4,7 @@ import os
 from WiFree.Settings.ConfigurationParser import ConfigurationParser
 from WiFree.Settings.CurrentSettings import CurrentSettings
 from WiFree.Settings import DEFAULT_CONFIG_FILE
+from WiFree.Aircrack.Airmon import Airmon
 
 parser = argparse.ArgumentParser(prog='wifree', description='Free your wifi.')
 parser.add_argument('-e', '--essid', help='Network essid')
@@ -47,9 +48,9 @@ if __name__ == '__main__':
         exit(-1)
 
     print("Current settings: ")
-    print("Essid: " + currentSettings.getEssid())
-    print("Interface: " + currentSettings.getInterface())
-    print("Whitelist: " + currentSettings.getWhitelist())
+    print("\tEssid: " + currentSettings.getEssid())
+    print("\tInterface: " + currentSettings.getInterface())
+    print("\tWhitelist: " + currentSettings.getWhitelist())
 
     airmon = Airmon(currentSettings.getInterface())
 
@@ -59,3 +60,8 @@ if __name__ == '__main__':
         exit(-1)
     print("Activated monitor mode on interface " + airmon.getInterface())
     print("Monitor interface is " + airmon.getMonitorInterface())
+
+    # work here...
+
+    print("Deactivating monitor mode on interface " + airmon.getMonitorInterface())
+    airmon.stop()

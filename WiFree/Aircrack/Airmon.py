@@ -23,12 +23,14 @@ class Airmon:
         return self._monitorInterface
 
     def start(self):
+        # subprocess.run waits for the process to complete and then returns
         # universal_newlines=True forces subprocess to return stdout and
         # stderr as strings and not as bytes
-        p = subprocess.run([AIRMON, AIRMON_START, self._interface], \
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, \
+        p = subprocess.run([self.AIRMON, self.AIRMON_START, self._interface], \
+                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,       \
                         check=True, universal_newlines=True)
         if p.stderr:
+            print(p.stderr)
             self.error = p.stderr
             return False
 
@@ -40,14 +42,16 @@ class Airmon:
         else:
             self.error = "couldn't find monitor interface"
             return False
+        return True
 
     def stop(self):
-        p = subprocess.run([AIRMON, AIRMON_STOP, self._monitorInterface], \
-                        stdout=subprocess.PIPE                            \
+        p = subprocess.run([self.AIRMON, self.AIRMON_STOP,                \
+                        self._monitorInterface], stdout=subprocess.PIPE,  \
                         check=True, universal_newlines=True)
         return True
 
     def check(self):
-        p = subprocess.run([AIRMON, AIRMON_CHECK], stdout=subprocess.PIPE, \
-                        check=True, universal_newlines=True)
+        p = subprocess.run([self.AIRMON, self.AIRMON_CHECK], \
+                        stdout=subprocess.PIPE, check=True,  \
+                        universal_newlines=True)
         return p.stdout

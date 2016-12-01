@@ -11,7 +11,7 @@ class ConfigurationParser:
         try:
             f = open(self.path, 'r')
         # return false on error
-        except IOError, err:
+        except IOError:
             return False
         # if open is successful, parse the file
         else:

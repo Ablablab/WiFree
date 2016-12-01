@@ -30,7 +30,7 @@ class Airmon:
                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,       \
                         check=True, universal_newlines=True)
         if p.stderr:
-            print(p.stderr)
+            #print(p.stderr)
             self.error = p.stderr
             return False
 

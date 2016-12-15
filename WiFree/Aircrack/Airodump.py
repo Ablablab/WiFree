@@ -20,6 +20,8 @@ class Airodump:
         self._aps = {}
         # bssid-essid list. It's the same as above, used for usefulness
         self._bssids = {}
+        # which channel each bssid is using
+        self._channels = {}
         # clients bssid list
         self._clients = {}
         # default file for airodump output
@@ -51,12 +53,16 @@ class Airodump:
 
         self.stop()
         self._bssid = self._aps[self._essid][0]
-        return True
+        return self._bssid
 
     def stop(self):
         if self._running:
-            self._running = False
-            return self._proc.kill()
+            if self._proc.kill():
+                self._running = False
+                self._n -= 1
+                return True
+            else:
+                return False
         else:
             return False
 
@@ -90,6 +96,9 @@ class Airodump:
         self._running = True
         self._n += 1
 
+    def getChannel(self, bssid):
+        return self._channels[bssid]
+
     def read_res(self):
         n = str(self._n).zfill(2)
         f = open(self._airout+"-"+n+".csv")
@@ -104,6 +113,7 @@ class Airodump:
         self._aps = {}
         self._bssids = {}
         self._clients = {}
+        self._channels = {}
 
         n = 0
         for line in lines:
@@ -126,11 +136,13 @@ class Airodump:
             a = [v.strip() for v in ap]
             essid = a[-2]
             bssid = a[0]
+            channel = a[3]
             if essid in self._aps:
                 self._aps[essid].append(bssid)
             else:
                 self._aps[essid] = [bssid]
             self._bssids[bssid] = essid
+            self._channels[bssid] = channel
 
         # get MAC address of clients connected to each station
         for cl in clients:

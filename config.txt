@@ -1,3 +1,7 @@
-essid=network_essid
+essid=NETGEAR64
 interface=wlx00c0ca854d91
-whitelist=mac1 mac2 mac3
+whitelist=mac1 mac2
+verbose=0
+sec=5
+max_attempts=20
+N=10

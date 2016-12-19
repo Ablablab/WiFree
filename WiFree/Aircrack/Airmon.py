@@ -15,6 +15,7 @@ class Airmon:
         self._interface = interface
         self._monitorInterface = ""
         self.error = ""
+        self._run = False
 
     def getInterface(self):
         return self._interface
@@ -42,12 +43,17 @@ class Airmon:
         else:
             self.error = "couldn't find monitor interface"
             return False
+        self._run = True
         return True
+
+    def isDone(self):
+        return self._run
 
     def stop(self):
         p = subprocess.run([self.AIRMON, self.AIRMON_STOP,                \
                         self._monitorInterface], stdout=subprocess.PIPE,  \
                         check=True, universal_newlines=True)
+        self._run = False
         return True
 
     def check(self):

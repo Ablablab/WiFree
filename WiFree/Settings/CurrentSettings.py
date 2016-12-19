@@ -7,7 +7,10 @@ class CurrentSettings:
         self.error = False
         self.settings = settings
 
-    def check_error(self):
+    def check_error(self, others):
+        for o in others:
+            if not o in self.settings:
+                return True
         if not CONFIG_ESSID in self.settings or \
                 not CONFIG_INTERFACE in self.settings or \
                 not CONFIG_WHITELIST in self.settings:

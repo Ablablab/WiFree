@@ -31,13 +31,35 @@ class Airodump:
         # variable to hold the number of executions
         self._n = 0
 
-    def getBSSID(self, sec, max):
+    def getClosestBSSID(self, sec, max):
         """
             Gets the bssid of the closest ap with essid _essid
             @sec: seconds to wait before choosing the closest ap
             @max: max number of attempts of sec seconds before aborting
         """
 
+        if self._running:
+            if self._essid in self._aps:
+                self._bssid = self._aps[self._essid][0]
+                return self._bssid
+            else:
+                return False
+
+        self.start([])
+
+        i = 0
+        while not self._essid in self._aps:
+            if (i == max):
+                return False
+            time.sleep(sec)
+            self.read_res()
+            i += 1
+
+        self.stop()
+        self._bssid = self._aps[self._essid][0]
+        return self._bssid
+
+    def getBSSID(self, sec, max):
         if self._running:
             return False
 
@@ -53,7 +75,8 @@ class Airodump:
 
         self.stop()
         self._bssid = self._aps[self._essid][0]
-        return self._bssid
+
+        return self._aps[self._essid]
 
     def stop(self):
         if self._running:
